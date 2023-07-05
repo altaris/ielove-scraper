@@ -1,5 +1,6 @@
 """Page scraping"""
 
+from datetime import datetime
 from typing import Any, Dict
 from urllib.parse import urlparse
 
@@ -21,7 +22,7 @@ def scrape_chintai(url: str) -> Dict[str, Any]:
 
     data["url"] = url
     data["pid"] = re.search(r"/([^/]+)/?$", urlparse(url).path).group(1)
-    logging.debug("Scraping chintai page id '{}'", data["pid"])
+    logging.info("Scraping chintai page id '{}'", data["pid"])
 
     tags = soup.find_all(
         name="h1", class_="detail-summary__tatemononame ui-font--size_h1"
@@ -49,4 +50,27 @@ def scrape_chintai(url: str) -> Dict[str, Any]:
     m = re.search(r"q=(\d+\.\d+),(\d+\.\d+)&", tags[0].iframe["data-src"])
     data["location"] = [float(m.group(1)), float(m.group(2))]
 
+    data["_datetime"] = datetime.now()
+    return data
+
+
+def scrape_chintai_result_page(url: str) -> Dict[str, Any]:
+    """
+    Scrapes all ids from a chintai result page, e.g.
+
+        https://www.ielove.co.jp/chintai/tokyo/result/
+
+    or
+
+        https://www.ielove.co.jp/chintai/tokyo/result/?pg=2
+
+    The list of page ids is under the `pids` key of the returned dict.
+    """
+    logging.info("Scraping chintai result page '{}'", url)
+    soup = get_soup(url)
+    r = re.compile("^/chintai/(.+)/$")
+    pids = []
+    for tag in soup.find_all(name="a", class_="result-panel-room__inner"):
+        pids.append(r.search(tag["href"]).group(1))
+    data = {"_datetime": datetime.now(), "pids": pids}
     return data

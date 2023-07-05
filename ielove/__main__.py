@@ -14,7 +14,7 @@ from loguru import logger as logging
 from rich.pretty import pprint
 
 from ielove.db import get_collection
-from ielove.page import scrape_chintai
+from ielove.page import scrape_chintai, scrape_chintai_result_page
 
 
 def _setup_logging(logging_level: str) -> None:
@@ -91,6 +91,25 @@ def get_chintai(
         data["_datetime"] = datetime.now()
         collection = get_collection("chintai", user, password)
         collection.insert_one(data)
+
+
+@main.command()
+@click.option("-u", "--user", type=str, help="MongoDB username")
+@click.option("-p", "--password", type=str, help="MongoDB password")
+@click.argument("url", type=str)
+def get_chintais(url: str, user: str, password: str):
+    """
+    Scrapes all chintai pages referenced by the given result page, and commits
+    everything to database
+    """
+    pids = scrape_chintai_result_page(url)["pids"]
+    collection = get_collection("chintai", user, password)
+    for pid in pids:
+        try:
+            data = scrape_chintai(f"https://www.ielove.co.jp/chintai/{pid}")
+            collection.insert_one(data)
+        except Exception as e:
+            logging.error(f"{type(e)}: {str(e)}")
 
 
 # pylint: disable=no-value-for-parameter
