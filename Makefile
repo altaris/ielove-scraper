@@ -9,12 +9,12 @@ all: format typecheck lint
 .PHONY: docs
 docs:
 	-@mkdir $(DOCS_PATH) > /dev/null 2>&1
-	pdoc --output-directory $(DOCS_PATH) $(SRC_PATH)
+	pdoc -d google --output-directory $(DOCS_PATH) $(SRC_PATH)
 
 .PHONY: docs-browser
 docs-browser:
 	-@mkdir $(DOCS_PATH) > /dev/null 2>&1
-	pdoc $(SRC_PATH)
+	pdoc -d google $(SRC_PATH)
 
 .PHONY: format
 format:

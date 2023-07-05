@@ -1,2 +1,6 @@
+beautifulsoup4
 click
 loguru
+pymongo
+regex
+requests
