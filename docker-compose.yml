@@ -1,0 +1,29 @@
+version: '3.5'
+
+volumes:
+  mongo-conf:
+    name: mongo-conf
+  mongo-data:
+    name: mongo-data
+
+services:
+  mongo:
+    container_name: mongo
+    env_file:
+      - secret.env
+    image: mongo
+    ports:
+      - 27017:27017
+    volumes:
+      - mongo-conf:/data/configdb
+      - mongo-data:/data/db
+  mongo-express:
+    container_name: mongo-express
+    depends_on:
+      - mongo
+    env_file:
+      - secret.env
+    image: mongo-express
+    ports:
+      - 8081:8081
+    restart: on-failure:5
