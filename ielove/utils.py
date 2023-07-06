@@ -3,7 +3,8 @@ General utilities
 """
 
 import datetime
-from typing import Any
+from typing import Any, Union
+from urllib.parse import ParseResult
 
 import bs4
 import regex as re
@@ -24,8 +25,10 @@ def all_tag_contents(tag: bs4.element.Tag) -> list:
     return results
 
 
-def get_soup(url: str) -> bs4.BeautifulSoup:
+def get_soup(url: Union[str, ParseResult]) -> bs4.BeautifulSoup:
     """Gets the HTML code of a page, parsed into a `bs4.BeautifulSoup`"""
+    if isinstance(url, ParseResult):
+        url = url.geturl()
     logging.debug("GET {}", url)
     response = requests.get(url, timeout=10)
     response.raise_for_status()

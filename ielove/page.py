@@ -1,8 +1,8 @@
 """Page scraping"""
 
 from datetime import datetime
-from typing import Any, Dict
-from urllib.parse import urlparse
+from typing import Any, Dict, Union
+from urllib.parse import urlparse, ParseResult
 
 import regex as re
 from loguru import logger as logging
@@ -10,24 +10,31 @@ from loguru import logger as logging
 from ielove.utils import all_tag_contents, get_soup, process_string
 
 
-def scrape_chintai(url: str) -> Dict[str, Any]:
+def scrape_property_page(url: Union[str, ParseResult]) -> Dict[str, Any]:
     """
-    Scrapes a chintai page, e.g.
+    Scrapes a property page page, e.g.
 
         https://www.ielove.co.jp/chintai/c1-397758400
+        https://www.ielove.co.jp/mansion_shinchiku/b1-404543984/
     """
     soup = get_soup(url)
+    if isinstance(url, str):
+        url = urlparse(url)
 
-    data: Dict[str, Any] = {}
+    m = re.search("^/?([^/]+)/([^/]+)/?$", url.path)
+    data: Dict[str, Any] = {
+        "url": url.geturl(),
+        "pid": m.group(2),
+        "type": m.group(1),
+        "datetime": datetime.now(),
+    }
 
-    data["url"] = url
-    data["pid"] = re.search(r"/([^/]+)/?$", urlparse(url).path).group(1)
-    logging.info("Scraping chintai page id '{}'", data["pid"])
+    logging.info("Scraping {} page id '{}'", data["type"], data["pid"])
 
     tags = soup.find_all(
         name="h1", class_="detail-summary__tatemononame ui-font--size_h1"
     )
-    data["title"] = process_string(tags[0].contents[0])
+    data["name"] = process_string(tags[0].contents[0])
 
     tags = soup.find_all(name="p", class_="detail-salespoint__txt")
     data["salespoint"] = process_string(tags[0].contents[0])
@@ -50,25 +57,21 @@ def scrape_chintai(url: str) -> Dict[str, Any]:
     m = re.search(r"q=(\d+\.\d+),(\d+\.\d+)&", tags[0].iframe["data-src"])
     data["location"] = [float(m.group(1)), float(m.group(2))]
 
-    data["_datetime"] = datetime.now()
     return data
 
 
-def scrape_chintai_result_page(url: str) -> Dict[str, Any]:
+def scrape_result_page(url: str) -> Dict[str, Any]:
     """
     Scrapes all ids from a chintai result page, e.g.
 
         https://www.ielove.co.jp/chintai/tokyo/result/
+        https://www.ielove.co.jp/mansion_chuko/tokyo/result/?pg=2
 
-    or
-
-        https://www.ielove.co.jp/chintai/tokyo/result/?pg=2
-
-    The list of page ids is under the `pids` key of the returned dict.
+    Returns a dict. The list of propertu page ids is under the `pids` key.
     """
-    logging.info("Scraping chintai result page '{}'", url)
+    logging.info("Scraping property result page '{}'", url)
     soup = get_soup(url)
-    r = re.compile("^/chintai/(.+)/$")
+    r = re.compile("^/[^/]+/(.+)/$")
     pids = []
     for tag in soup.find_all(name="a", class_="result-panel-room__inner"):
         pids.append(r.search(tag["href"]).group(1))

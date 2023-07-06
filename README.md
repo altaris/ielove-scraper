@@ -9,15 +9,15 @@ ielove.co.jp scraper
 
 # Howto
 
-## Scrape a chintai page
+## Scrape a property page
 
 ```sh
-python3 -m ielove get-chintai https://www.ielove.co.jp/chintai/c1-397758400
+python3 -m ielove get-property https://www.ielove.co.jp/chintai/c1-397758400
 ```
 If commiting to database:
 ```sh
 . ./secret.env
-python3 -m ielove get-chintai --commit -u $MONGO_INITDB_ROOT_USERNAME -p $MONGO_INITDB_ROOT_PASSWORD https://www.ielove.co.jp/chintai/c1-397758400
+python3 -m ielove get-property --commit -u $MONGO_INITDB_ROOT_USERNAME -p $MONGO_INITDB_ROOT_PASSWORD https://www.ielove.co.jp/chintai/c1-397758400
 ```
 
 # Contributing

@@ -14,7 +14,7 @@ from loguru import logger as logging
 from rich.pretty import pprint
 
 from ielove.db import get_collection
-from ielove.page import scrape_chintai, scrape_chintai_result_page
+from ielove.page import scrape_property_page, scrape_result_page
 
 
 def _setup_logging(logging_level: str) -> None:
@@ -71,25 +71,15 @@ def main(logging_level: str):
     help="Wether to commit the document to database",
     default=False,
 )
-@click.option("-u", "--user", type=str, help="MongoDB username", default=None)
-@click.option(
-    "-p", "--password", type=str, help="MongoDB password", default=None
-)
 @click.argument("url", type=str)
-def get_chintai(
-    url: str, commit: bool, user: Optional[str], password: Optional[str]
+def get_property(
+    url: str, commit: bool
 ):
-    """Scrapes a chintai page and prints the results"""
-    data = scrape_chintai(url)
+    """Scrapes a property page and prints the results"""
+    data = scrape_property_page(url)
     pprint(data)
     if commit:
-        if user is None or password is None:
-            logging.error(
-                "If commiting to database, user and password must be provided"
-            )
-            return
-        data["_datetime"] = datetime.now()
-        collection = get_collection("chintai", user, password)
+        collection = get_collection("property")
         collection.insert_one(data)
 
 
@@ -97,16 +87,17 @@ def get_chintai(
 @click.option("-u", "--user", type=str, help="MongoDB username")
 @click.option("-p", "--password", type=str, help="MongoDB password")
 @click.argument("url", type=str)
-def get_chintais(url: str, user: str, password: str):
+def get_properties(url: str, user: str, password: str):
     """
-    Scrapes all chintai pages referenced by the given result page, and commits
+    Scrapes all property pages referenced by the given result page, and commits
     everything to database
     """
-    pids = scrape_chintai_result_page(url)["pids"]
-    collection = get_collection("chintai", user, password)
+    pids = scrape_result_page(url)["pids"]
+    collection = get_collection("property", user, password)
     for pid in pids:
         try:
-            data = scrape_chintai(f"https://www.ielove.co.jp/chintai/{pid}")
+            url = f"https://www.ielove.co.jp/property/{pid}"
+            data = scrape_property_page(url)
             collection.insert_one(data)
         except Exception as e:
             logging.error(f"{type(e)}: {str(e)}")
