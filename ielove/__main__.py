@@ -1,6 +1,5 @@
-"""
-Entry point
-"""
+# pylint: disable=import-outside-toplevel
+"""Entry point"""
 __docformat__ = "google"
 
 
@@ -11,11 +10,11 @@ import click
 from loguru import logger as logging
 from rich.pretty import pprint
 
+from ielove import ielove
 from ielove.db import get_collection
-from ielove.page import scrape_property_page, scrape_result_page
 
 
-def _setup_logging(logging_level: str) -> None:
+def _setup_logging(logging_level: str = "INFO") -> None:
     """
     Sets logging format and level. The format is
 
@@ -72,11 +71,20 @@ def main(logging_level: str):
 @click.argument("url", type=str)
 def get_property(url: str, commit: bool):
     """Scrapes a property page and prints the results"""
-    data = scrape_property_page(url)
+    data = ielove.scrape_property_page(url)
     pprint(data)
     if commit:
-        collection = get_collection("property")
+        collection = get_collection("properties")
         collection.insert_one(data)
+
+
+@main.command()
+@click.argument("url", type=str)
+def scrape_property_page(url: str):
+    """Asynchronously scrapes property page and commits the results"""
+    from ielove import tasks
+
+    tasks.scrape_property_page.delay(url)
 
 
 @main.command()
@@ -86,8 +94,8 @@ def get_properties(url: str):
     Scrapes all property pages referenced by the given result page, and commits
     everything to database
     """
-    pids = scrape_result_page(url)["pids"]
-    collection = get_collection("property")
+    pids = ielove.scrape_result_page(url)["pids"]
+    collection = get_collection("properties")
     for pid in pids:
         try:
             url = f"https://www.ielove.co.jp/property/{pid}"

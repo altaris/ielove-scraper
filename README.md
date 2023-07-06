@@ -9,6 +9,15 @@ ielove.co.jp scraper
 
 # Howto
 
+## Start a celery worker
+
+```sh
+. ./secret.env
+export MONGO_USER=$MONGO_INITDB_ROOT_USERNAME
+export MONGO_PASSWORD=$MONGO_INITDB_ROOT_PASSWORD
+celery -A ielove.tasks worker --loglevel=INFO
+```
+
 ## Scrape a property page
 
 ```sh
