@@ -66,14 +66,20 @@ def scrape_result_page(url: str) -> Dict[str, Any]:
 
         https://www.ielove.co.jp/chintai/tokyo/result/
         https://www.ielove.co.jp/mansion_chuko/tokyo/result/?pg=2
-
-    Returns a dict. The list of propertu page ids is under the `pids` key.
     """
     logging.info("Scraping property result page '{}'", url)
     soup = get_soup(url)
-    r = re.compile("^/[^/]+/(.+)/$")
-    pids = []
+    r = re.compile("^/(.+)/(.+)/$")
+    pages = []
     for tag in soup.find_all(name="a", class_="result-panel-room__inner"):
-        pids.append(r.search(tag["href"]).group(1))
-    data = {"_datetime": datetime.now(), "pids": pids}
+        href = tag["href"]
+        m = r.search(href)
+        pages.append(
+            {
+                "pid": m.group(2),
+                "type": m.group(1),
+                "url": "https://www.ielove.co.jp" + href,
+            }
+        )
+    data = {"datetime": datetime.now(), "pages": pages}
     return data

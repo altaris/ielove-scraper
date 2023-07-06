@@ -37,3 +37,10 @@ def scrape_property_page(url: Union[str, ParseResult]) -> None:
     data = ielove.scrape_property_page(url)
     collection = get_collection("properties")
     collection.insert_one(data)
+
+
+@app.task
+def scrape_result_page(url: Union[str, ParseResult]) -> None:
+    data = ielove.scrape_result_page(url)
+    for page in data["pages"]:
+        scrape_property_page.delay(page["url"])

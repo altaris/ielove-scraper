@@ -80,6 +80,23 @@ def get_property(url: str, commit: bool):
 
 @main.command()
 @click.argument("url", type=str)
+def get_properties(url: str):
+    """
+    Scrapes all property pages referenced by the given result page, and commits
+    everything to database
+    """
+    data = ielove.scrape_result_page(url)
+    collection = get_collection("properties")
+    for page in data["pages"]:
+        try:
+            data = scrape_property_page(page["url"])
+            collection.insert_one(data)
+        except Exception as e:
+            logging.error(f"{type(e)}: {str(e)}")
+
+
+@main.command()
+@click.argument("url", type=str)
 def scrape_property_page(url: str):
     """Asynchronously scrapes property page and commits the results"""
     from ielove import tasks
@@ -89,20 +106,14 @@ def scrape_property_page(url: str):
 
 @main.command()
 @click.argument("url", type=str)
-def get_properties(url: str):
+def scrape_result_page(url: str):
     """
-    Scrapes all property pages referenced by the given result page, and commits
-    everything to database
+    Asynchronously scrapes all properties in a given result page, and commits
+    the results
     """
-    pids = ielove.scrape_result_page(url)["pids"]
-    collection = get_collection("properties")
-    for pid in pids:
-        try:
-            url = f"https://www.ielove.co.jp/property/{pid}"
-            data = scrape_property_page(url)
-            collection.insert_one(data)
-        except Exception as e:
-            logging.error(f"{type(e)}: {str(e)}")
+    from ielove import tasks
+
+    tasks.scrape_result_page.delay(url)
 
 
 # pylint: disable=no-value-for-parameter
