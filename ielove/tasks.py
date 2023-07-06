@@ -1,15 +1,14 @@
+# pylint: disable=missing-function-docstring
 """Celery tasks"""
 
 import os
 import sys
 from typing import Union
 from urllib.parse import ParseResult
-import bs4
 
 from celery import Celery
-from loguru import logger as logging
 
-from ielove import ielove, db, utils
+from ielove import ielove, db
 
 ONE_WEEK = 60 * 60 * 24 * 7  # One week in seconds
 
@@ -21,6 +20,14 @@ def _is_worker() -> bool:
         and sys.argv[0].endswith("celery")
         and ("worker" in sys.argv)
     )
+
+
+def _should_scrape(url: Union[str, ParseResult]) -> bool:
+    """Returns False if the page has been scraped within a week"""
+    if isinstance(url, ParseResult):
+        url = url.geturl()
+    age = ielove.seconds_since_last_scrape(url)
+    return not 0 < age < ONE_WEEK
 
 
 def get_app() -> Celery:
@@ -37,21 +44,25 @@ app = get_app()
 
 @app.task(rate_limit="1/s")
 def scrape_property_page(url: Union[str, ParseResult]) -> None:
-    age = ielove.seconds_since_last_scrape(url)
-    if 0 < age < ONE_WEEK:
-        logging.info(
-            "Property page '{}' was scraped too recently ({}s ago), skipping",
-            url,
-            age,
-        )
-        return
     data = ielove.scrape_property_page(url)
+    if not _should_scrape(url):
+        return
     collection = db.get_collection("properties")
     collection.insert_one(data)
 
 
-@app.task
+@app.task(rate_limit="1/s")
 def scrape_result_page(url: Union[str, ParseResult]) -> None:
     data = ielove.scrape_result_page(url)
     for page in data["pages"]:
-        scrape_property_page.delay(page["url"])
+        url = page["url"]
+        if _should_scrape(url):
+            scrape_property_page.delay(url)
+
+
+@app.task
+def scrape_region(region: str, property_type: str, limit: int = 100) -> None:
+    base = f"https://www.ielove.co.jp/{property_type}/{region}/result"
+    for i in range(1, limit + 1):
+        url = f"{base}/?pg={i}"
+        scrape_result_page.delay(url)

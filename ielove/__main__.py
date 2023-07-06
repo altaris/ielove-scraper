@@ -105,6 +105,19 @@ def scrape_property_page(url: str):
 
 
 @main.command()
+@click.argument("region", type=str)
+@click.argument("property_type", type=str)
+@click.option("-l", "--limit", type=int, default=100, help="Result page limit")
+def scrape_region(region: str, property_type: str, limit: int):
+    """
+    Asynchronously scrapes all properties of a given type in a given region
+    """
+    from ielove import tasks
+
+    tasks.scrape_region(region, property_type, limit=limit)
+
+
+@main.command()
 @click.argument("url", type=str)
 def scrape_result_page(url: str):
     """

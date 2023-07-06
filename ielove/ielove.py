@@ -1,9 +1,8 @@
 """Page scraping"""
 
 from datetime import datetime
-from typing import Any, Dict, Iterable, Optional, Union
+from typing import Any, Dict, Iterable, Union
 from urllib.parse import ParseResult, urlparse
-import bs4
 
 import pymongo
 import regex as re
@@ -72,8 +71,8 @@ def scrape_result_page(url: Union[str, ParseResult]) -> Dict[str, Any]:
 
     If `soup` is provided, no additional GET against `ielove.co.jp` is issued.
     """
-    if isinstance(url, str):
-        url = urlparse(url)
+    if isinstance(url, ParseResult):
+        url = url.geturl()
     logging.info("Scraping property result page '{}'", url)
     soup = get_soup(url)
     r = re.compile("^/(.+)/(.+)/$")
