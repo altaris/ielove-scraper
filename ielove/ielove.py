@@ -1,12 +1,15 @@
 """Page scraping"""
 
 from datetime import datetime
-from typing import Any, Dict, Union
-from urllib.parse import urlparse, ParseResult
+from typing import Any, Dict, Iterable, Optional, Union
+from urllib.parse import ParseResult, urlparse
+import bs4
 
+import pymongo
 import regex as re
 from loguru import logger as logging
 
+from ielove.db import get_collection
 from ielove.utils import all_tag_contents, get_soup, process_string
 
 
@@ -17,9 +20,9 @@ def scrape_property_page(url: Union[str, ParseResult]) -> Dict[str, Any]:
         https://www.ielove.co.jp/chintai/c1-397758400
         https://www.ielove.co.jp/mansion_shinchiku/b1-404543984/
     """
-    soup = get_soup(url)
     if isinstance(url, str):
         url = urlparse(url)
+    soup = get_soup(url)
 
     m = re.search("^/?([^/]+)/([^/]+)/?$", url.path)
     data: Dict[str, Any] = {
@@ -54,19 +57,23 @@ def scrape_property_page(url: Union[str, ParseResult]) -> Dict[str, Any]:
                 data["details"][hc] = " ".join(map(str, tc))
 
     tags = soup.find_all(name="div", class_="detail-spot__map")
-    m = re.search(r"q=(\d+\.\d+),(\d+\.\d+)&", tags[0].iframe["data-src"])
-    data["location"] = [float(m.group(1)), float(m.group(2))]
+    if m := re.search(r"q=(\d+\.\d+),(\d+\.\d+)&", tags[0].iframe["data-src"]):
+        data["location"] = [float(m.group(1)), float(m.group(2))]
 
     return data
 
 
-def scrape_result_page(url: str) -> Dict[str, Any]:
+def scrape_result_page(url: Union[str, ParseResult]) -> Dict[str, Any]:
     """
     Scrapes all ids from a chintai result page, e.g.
 
         https://www.ielove.co.jp/chintai/tokyo/result/
         https://www.ielove.co.jp/mansion_chuko/tokyo/result/?pg=2
+
+    If `soup` is provided, no additional GET against `ielove.co.jp` is issued.
     """
+    if isinstance(url, str):
+        url = urlparse(url)
     logging.info("Scraping property result page '{}'", url)
     soup = get_soup(url)
     r = re.compile("^/(.+)/(.+)/$")
@@ -83,3 +90,22 @@ def scrape_result_page(url: str) -> Dict[str, Any]:
         )
     data = {"datetime": datetime.now(), "pages": pages}
     return data
+
+
+def seconds_since_last_scrape(url: Union[str, ParseResult]) -> int:
+    """
+    Returns the time (in seconds) since last time the property page was
+    scraped. Returns -1 if the page was never scraped
+    """
+    collection = get_collection("properties")
+    result: Iterable[dict] = collection.find(
+        {"url": url},
+        projection=["datetime"],
+        sort=[("datetime", pymongo.DESCENDING)],
+        limit=1,
+    )
+    result = list(result)
+    if not result:
+        return -1
+    dt = result[0]["datetime"]
+    return (datetime.now() - dt).seconds
