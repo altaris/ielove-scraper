@@ -6,8 +6,6 @@ __docformat__ = "google"
 
 import os
 import sys
-from datetime import datetime
-from typing import Optional
 
 import click
 from loguru import logger as logging
@@ -72,9 +70,7 @@ def main(logging_level: str):
     default=False,
 )
 @click.argument("url", type=str)
-def get_property(
-    url: str, commit: bool
-):
+def get_property(url: str, commit: bool):
     """Scrapes a property page and prints the results"""
     data = scrape_property_page(url)
     pprint(data)
@@ -84,16 +80,14 @@ def get_property(
 
 
 @main.command()
-@click.option("-u", "--user", type=str, help="MongoDB username")
-@click.option("-p", "--password", type=str, help="MongoDB password")
 @click.argument("url", type=str)
-def get_properties(url: str, user: str, password: str):
+def get_properties(url: str):
     """
     Scrapes all property pages referenced by the given result page, and commits
     everything to database
     """
     pids = scrape_result_page(url)["pids"]
-    collection = get_collection("property", user, password)
+    collection = get_collection("property")
     for pid in pids:
         try:
             url = f"https://www.ielove.co.jp/property/{pid}"

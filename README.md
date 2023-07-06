@@ -17,7 +17,9 @@ python3 -m ielove get-property https://www.ielove.co.jp/chintai/c1-397758400
 If commiting to database:
 ```sh
 . ./secret.env
-python3 -m ielove get-property --commit -u $MONGO_INITDB_ROOT_USERNAME -p $MONGO_INITDB_ROOT_PASSWORD https://www.ielove.co.jp/chintai/c1-397758400
+export MONGO_USER=$MONGO_INITDB_ROOT_USERNAME
+export MONGO_PASSWORD=$MONGO_INITDB_ROOT_PASSWORD
+python3 -m ielove get-property --commit https://www.ielove.co.jp/chintai/c1-397758400
 ```
 
 # Contributing
