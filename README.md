@@ -31,6 +31,12 @@ export MONGO_PASSWORD=$MONGO_INITDB_ROOT_PASSWORD
 python3 -m ielove get-property --commit https://www.ielove.co.jp/chintai/c1-397758400
 ```
 
+## Start the webui
+
+```sh
+python3 -m ielove.webui
+```
+
 # Contributing
 
 ## Dependencies
