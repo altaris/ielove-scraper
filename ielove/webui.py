@@ -2,12 +2,12 @@
 # pylint: disable=unnecessary-lambda
 """Webui"""
 
-from functools import partial
 from typing import Callable, List
 
 from nicegui import ui
 from nicegui.element import Element
-from ielove.db import get_property
+import pymongo
+from ielove import db
 
 PROPERTY_ICONS = {
     "chintai": "real_estate_agent",
@@ -17,62 +17,104 @@ PROPERTY_ICONS = {
     "mansion_shinchiku": "apartment",
     "tochi": "explore",
 }
+"""Icon for each property type"""
 
 
 def populate_with_property(parent: Element, data: dict) -> None:
+    """Populates an element (e.g. a card) with the data of a property"""
     with parent:
-        name, url, dt = data["name"], data["url"], data["datetime"]
-        ui.markdown(f"# [{name}]({url})")
-        ui.markdown(f"_scraped at {str(dt)}_")
-        ui.markdown(data["salespoint"])
-        ui.aggrid(
-            {
-                "columnDefs": [
-                    {"headerName": "Field", "field": "field"},
-                    {"headerName": "Value", "field": "value"},
-                ],
-                "rowData": [
-                    {"field": k, "value": v}
-                    for k, v in data["details"].items()
-                ],
-            }
-        )
+        card = ui.card()
+    with card:
+        ui.markdown(f"# [{data['name']}]({data['url']})")
+        splitter = ui.splitter().classes("w-full")
+        with splitter.before:
+            maps_url = "https://www.google.com/maps?q=" + data["details"]["住所"]
+            ui.markdown(f"[{data['details']['住所']}]({maps_url})")
+            if data["type"] == "chintai":
+                ui.markdown(f"Rent: __{data['details']['賃料']}__")
+            else:
+                ui.markdown(f"Price: __{data['details']['価格']}__")
+            ui.markdown(f"_scraped at {str(data['datetime'])}_")
+            ui.markdown(data["salespoint"])
+            columns = [
+                {
+                    "label": "Field",
+                    "field": "field",
+                    "align": "right",
+                    "sortable": True,
+                },
+                {
+                    "label": "Value",
+                    "field": "value",
+                    "align": "left",
+                },
+            ]
+            rows = [
+                {"field": k, "value": str(v)}
+                for k, v in data["details"].items()
+            ]
+            props = "hide-header; wrap-cells"
+            ui.table(columns=columns, rows=rows).props(props)
+        with splitter.after:
+            ui.image(
+                "data:image/png;base64,"
+                + str(data["floor_plan"]["img"].decode("utf-8"))
+            )
 
 
-def populate_result_card(results: List[dict]):
-    result_card.clear()
+def search_by_address():
+    result_div.clear()
+    key = str(search_field.value).strip()
+    # TODO: Move query logic to ielove.db ?
+    collection = db.get_collection("properties")
+    results = collection.find(
+        {"details.住所": {"$regex": f".*{key}.*"}},
+        sort=[("details.住所", pymongo.ASCENDING)],
+        limit=50,
+    )
     if not results:
-        result_card.set_visibility(False)
         ui.notify("No results", position="top", type="negative")
         return
-    result_card.set_visibility(True)
-    with result_card:
-        with ui.tabs() as tabs:
-            for i, data in enumerate(results):
-                d = str(data["datetime"].date())
-                ui.tab(i, label=d, icon=PROPERTY_ICONS[data["type"]])
-        with ui.tab_panels(tabs, value=0):
-            for i, data in enumerate(results):
-                populate_with_property(ui.tab_panel(i), data)
+    with result_div:
+        for data in results:
+            expansion = ui.expansion(
+                f"【{data['details']['住所']}】　{data['name']}",
+                icon=PROPERTY_ICONS.get(data["type"]),
+            )
+            populate_with_property(expansion, data)
 
 
-def on_button_search_clicked():
-    key = str(field_url.value).strip()
-    results = get_property(key)
-    populate_result_card(results)
+def search_by_id_or_url():
+    result_div.clear()
+    key = str(search_field.value).strip()
+    data = db.get_property(key)
+    if data is None:
+        ui.notify("No results", position="top", type="negative")
+        return
+    populate_with_property(result_div, data)
 
 
-field_url = ui.input("ID or URL")
-button_search = ui.button(
-    "Search",
-    icon="search",
-    on_click=lambda: on_button_search_clicked(),
-)
-ui.separator()
-result_card = ui.card()
-result_card.set_visibility(False)
+search_field = ui.input("Search").classes("w-full")
+with ui.row():
+    ui.button(
+        "Search by ID or URL",
+        icon="search",
+        on_click=lambda: search_by_id_or_url(),
+    )
+    ui.button(
+        "Search by address",
+        icon="search",
+        on_click=lambda: search_by_address(),
+    )
+    # ui.button(
+    #     "Full-text search",
+    #     icon="search",
+    #     on_click=lambda: search_by_full_text(),
+    # )
+result_div = ui.element(tag="div")
 
 if __name__ in ["__main__", "__mp_main__"]:
+    db.ensure_indices()
     ui.run(
         host="0.0.0.0",
         title="ielove",

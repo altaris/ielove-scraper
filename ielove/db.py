@@ -45,12 +45,15 @@ def get_property(key: str) -> Optional[dict]:
     method does not scrape.
 
     Args:
-        key (str): A URL or a PID
+        key (str): Either a ielove URL, ielove ID, or a 物件管理番号 (in a
+            string)
     """
-    if key.startswith("http"):
+    collection = get_collection("properties")
+    if re.match(r"^\d+$", key):  # 物件管理番号
+        return collection.find_one({"details.物件管理番号": int(key)})
+    if key.startswith("http"):  # URL
         url = urlparse(key)
         key = re.search("/([^/]+)/?$", url.path).group(1)
-    collection = get_collection("properties")
     return collection.find_one({"pid": key})
 
 
