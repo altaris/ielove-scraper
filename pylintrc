@@ -67,6 +67,7 @@ disable=
       protected-access,
       too-few-public-methods,
       too-many-arguments,
+      unnecessary-lambda-assignment
       ; broad-except,
       ; duplicate-code,
       ; global-statement,

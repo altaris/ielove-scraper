@@ -10,7 +10,7 @@ from celery import Celery
 
 from ielove import ielove, db
 
-ONE_WEEK = 60 * 60 * 24 * 7  # One week in seconds
+ONE_MONTH = 60 * 60 * 24 * 7 * 30  # Thirty days in seconds
 
 
 def _is_worker() -> bool:
@@ -27,7 +27,7 @@ def _should_scrape(url: Union[str, ParseResult]) -> bool:
     if isinstance(url, ParseResult):
         url = url.geturl()
     age = ielove.seconds_since_last_scrape(url)
-    return not 0 < age < ONE_WEEK
+    return not 0 < age < ONE_MONTH
 
 
 def get_app() -> Celery:
@@ -44,11 +44,11 @@ app = get_app()
 
 @app.task(rate_limit="1/s")
 def scrape_property_page(url: Union[str, ParseResult]) -> None:
-    data = ielove.scrape_property_page(url)
     if not _should_scrape(url):
         return
+    data = ielove.scrape_property_page(url)
     collection = db.get_collection("properties")
-    collection.insert_one(data)
+    collection.find_one_and_replace({"pid": data["pid"]}, data, upsert=True)
 
 
 @app.task(rate_limit="1/s")

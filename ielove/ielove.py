@@ -1,11 +1,13 @@
 """Page scraping"""
 
+from base64 import b64encode
 from datetime import datetime
 from typing import Any, Dict, Iterable, Union
 from urllib.parse import ParseResult, urlparse
 
 import pymongo
 import regex as re
+import requests
 from loguru import logger as logging
 
 from ielove.db import get_collection
@@ -79,6 +81,7 @@ ALL_PROPERTY_TYPES = [
 ]
 
 
+# pylint: disable=too-many-locals
 def scrape_property_page(url: Union[str, ParseResult]) -> Dict[str, Any]:
     """
     Scrapes a property page page, e.g.
@@ -122,9 +125,38 @@ def scrape_property_page(url: Union[str, ParseResult]) -> Dict[str, Any]:
             else:
                 data["details"][hc] = " ".join(map(str, tc))
 
+    data["location"] = {}
     tags = soup.find_all(name="div", class_="detail-spot__map")
     if m := re.search(r"q=(\d+\.\d+),(\d+\.\d+)&", tags[0].iframe["data-src"]):
-        data["location"] = [float(m.group(1)), float(m.group(2))]
+        data["location"]["geo"] = [float(m.group(1)), float(m.group(2))]
+    if "住所" in data["details"]:
+        r = r"(\w+[都道府県])?\s*(\w+[市町村])?\s*(\w+[区])?\s*(.*?)\s*(?:地図)?$"
+        if m := re.search(r, data["details"]["住所"]):
+            _f = lambda x: x if x else "-"
+            a, b, c, d = m.groups()
+            a, b, c, d = _f(a), _f(b), _f(c), _f(d)
+            data["location"]["prefecture"] = a
+            data["location"]["city"] = b
+            data["location"]["ward"] = c
+            data["location"]["address"] = d
+            data["details"]["住所"] = f"{a} {b} {c} {d}"
+
+    for tag in soup.find_all(name="img", class_="detail-thumbimage__img"):
+        if "間取り" not in tag["alt"]:
+            continue
+        try:
+            response = requests.get(tag["src"], timeout=10)
+            response.raise_for_status()
+            data["floor_plan"] = {
+                "url": tag["src"],
+                "img": b64encode(response.content),
+            }
+        except (requests.HTTPError, requests.Timeout) as e:
+            logging.error(
+                f"Could not get floor plan for property id {data['pid']} "
+                f"({data['url']}): {type(e)} {str(e)}"
+            )
+        break
 
     return data
 
