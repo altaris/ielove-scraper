@@ -42,7 +42,7 @@ def get_app() -> Celery:
 app = get_app()
 
 
-@app.task(rate_limit="1/s")
+@app.task(rate_limit="20/m")
 def scrape_property_page(url: Union[str, ParseResult]) -> None:
     if not _should_scrape(url):
         return
@@ -51,7 +51,7 @@ def scrape_property_page(url: Union[str, ParseResult]) -> None:
     collection.find_one_and_replace({"pid": data["pid"]}, data, upsert=True)
 
 
-@app.task(rate_limit="1/s")
+@app.task(rate_limit="20/m")
 def scrape_result_page(url: Union[str, ParseResult]) -> None:
     data = ielove.scrape_result_page(url)
     for page in data["pages"]:
