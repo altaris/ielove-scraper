@@ -103,17 +103,16 @@ def scrape_property_page(url: Union[str, ParseResult]) -> Dict[str, Any]:
 
     logging.info("Scraping {} page id '{}'", data["type"], data["pid"])
 
-    tags = soup.find_all(
+    if tag := soup.find(
         name="h1", class_="detail-summary__tatemononame ui-font--size_h1"
-    )
-    data["name"] = process_string(tags[0].contents[0])
+    ):
+        data["name"] = process_string(tag.contents[0])
 
-    tags = soup.find_all(name="p", class_="detail-salespoint__txt")
-    data["salespoint"] = process_string(tags[0].contents[0])
+    if tag := soup.find(name="p", class_="detail-salespoint__txt"):
+        data["salespoint"] = process_string(tag.contents[0])
 
-    tags = soup.find_all(name="div", class_="detail-bkninfo__block")
     data["details"] = {}
-    for tag in tags:
+    for tag in soup.find_all(name="div", class_="detail-bkninfo__block"):
         hs = tag.find_all(name="dt", class_="detail-bkninfo__head")
         ts = tag.find_all(name="dd", class_="detail-bkninfo__txt")
         for h, t in zip(hs, ts):
@@ -126,9 +125,9 @@ def scrape_property_page(url: Union[str, ParseResult]) -> Dict[str, Any]:
                 data["details"][hc] = " ".join(map(str, tc))
 
     data["location"] = {}
-    tags = soup.find_all(name="div", class_="detail-spot__map")
-    if m := re.search(r"q=(\d+\.\d+),(\d+\.\d+)&", tags[0].iframe["data-src"]):
-        data["location"]["geo"] = [float(m.group(1)), float(m.group(2))]
+    if tag := soup.find(name="div", class_="detail-spot__map"):
+        if m := re.search(r"q=(\d+\.\d+),(\d+\.\d+)&", tag.iframe["data-src"]):
+            data["location"]["geo"] = [float(m.group(1)), float(m.group(2))]
     if "住所" in data["details"]:
         r = r"(\w+[都道府県])?\s*(\w+[市町村])?\s*(\w+[区])?\s*(.*?)\s*(?:地図)?$"
         if m := re.search(r, data["details"]["住所"]):

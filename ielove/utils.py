@@ -30,7 +30,7 @@ def get_soup(url: Union[str, ParseResult]) -> bs4.BeautifulSoup:
     if isinstance(url, ParseResult):
         url = url.geturl()
     logging.debug("GET {}", url)
-    response = requests.get(url, timeout=10)
+    response = requests.get(url, timeout=20)
     response.raise_for_status()
     return bs4.BeautifulSoup(response.text, "html.parser")
 
