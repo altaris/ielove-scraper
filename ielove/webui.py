@@ -99,6 +99,7 @@ def s_search_by_id_or_url():
 def s_scrape_region():
     r = le_region.value
     t = le_property_type.value
+    l = int(n_limit.value)
     if r is None or t is None:
         ui.notify(
             "Select a region and a property type",
@@ -106,7 +107,7 @@ def s_scrape_region():
             type="negative",
         )
         return
-    tasks.scrape_region.delay(r, t)
+    tasks.scrape_region.delay(r, t, l)
     ui.notify("Submitted task", position="top", type="positive")
 
 
@@ -190,6 +191,9 @@ with ui.tab_panels(tabs, value=tab_search).classes("w-full"):
                         le_property_type = ui.select(
                             ielove.ALL_PROPERTY_TYPES, label="Property type"
                         ).classes("w-1/4")
+                        n_limit = ui.number(
+                            label="limit", value=100, min=1, max=1000, step=1
+                        )
                         ui.button(
                             "Submit task",
                             icon="add_task",
