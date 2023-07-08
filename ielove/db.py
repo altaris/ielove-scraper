@@ -2,12 +2,13 @@
 
 import os
 from typing import List, Optional
-from urllib.parse import urlparse
 
 import pymongo
 import regex as re
 from pymongo import MongoClient
 from pymongo.collection import Collection
+
+from ielove.utils import url_or_pid_to_pid
 
 
 def ensure_indices():
@@ -51,9 +52,7 @@ def get_property(key: str) -> Optional[dict]:
     collection = get_collection("properties")
     if re.match(r"^\d+$", key):  # 物件管理番号
         return collection.find_one({"details.物件管理番号": int(key)})
-    if key.startswith("http"):  # URL
-        url = urlparse(key)
-        key = re.search("/([^/]+)/?$", url.path).group(1)
+    key = url_or_pid_to_pid(key)
     return collection.find_one({"pid": key})
 
 

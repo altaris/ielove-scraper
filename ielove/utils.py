@@ -3,8 +3,8 @@ General utilities
 """
 
 import datetime
-from typing import Any, Union
-from urllib.parse import ParseResult
+from typing import Any
+from urllib.parse import urlparse
 
 import bs4
 import regex as re
@@ -25,10 +25,8 @@ def all_tag_contents(tag: bs4.element.Tag) -> list:
     return results
 
 
-def get_soup(url: Union[str, ParseResult]) -> bs4.BeautifulSoup:
+def get_soup(url: str) -> bs4.BeautifulSoup:
     """Gets the HTML code of a page, parsed into a `bs4.BeautifulSoup`"""
-    if isinstance(url, ParseResult):
-        url = url.geturl()
     logging.debug("GET {}", url)
     response = requests.get(url, timeout=20)
     response.raise_for_status()
@@ -74,3 +72,14 @@ def process_string(x: str) -> Any:
         year, month, day = int(m.group(1)), int(m.group(2)), int(m.group(3))
         return datetime.datetime(year, month, day)
     return x
+
+
+def url_or_pid_to_pid(key: str) -> str:
+    """
+    Extracts the property page id from a property page url. If the argument is
+    already just an id, it is directly returned.
+    """
+    if key.startswith("http"):  # URL
+        url = urlparse(key)
+        key = re.search("/([^/]+)/?$", url.path).group(1)
+    return key

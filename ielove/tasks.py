@@ -3,12 +3,12 @@
 
 import os
 import sys
-from typing import Union
 from urllib.parse import ParseResult
 
 from celery import Celery
+from loguru import logger as logging
 
-from ielove import ielove, db
+from ielove import db, ielove
 
 ONE_MONTH = 60 * 60 * 24 * 7 * 30  # Thirty days in seconds
 
@@ -22,7 +22,7 @@ def _is_worker() -> bool:
     )
 
 
-def _should_scrape(url: Union[str, ParseResult]) -> bool:
+def _should_scrape(url: str) -> bool:
     """Returns False if the page has been scraped within a week"""
     if isinstance(url, ParseResult):
         url = url.geturl()
@@ -43,8 +43,11 @@ app = get_app()
 
 
 @app.task(rate_limit="20/m")
-def scrape_property_page(url: Union[str, ParseResult]) -> None:
+def scrape_property_page(url: str) -> None:
     if not _should_scrape(url):
+        logging.debug(
+            "Property page '{}' has been scraped too recently, skipping", url
+        )
         return
     data = ielove.scrape_property_page(url)
     collection = db.get_collection("properties")
@@ -52,7 +55,7 @@ def scrape_property_page(url: Union[str, ParseResult]) -> None:
 
 
 @app.task(rate_limit="20/m")
-def scrape_result_page(url: Union[str, ParseResult]) -> None:
+def scrape_result_page(url: str) -> None:
     data = ielove.scrape_result_page(url)
     for page in data["pages"]:
         url = page["url"]
