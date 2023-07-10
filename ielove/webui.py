@@ -192,7 +192,11 @@ with ui.tab_panels(tabs, value=tab_search).classes("w-full"):
                             ielove.ALL_PROPERTY_TYPES, label="Property type"
                         ).classes("w-1/4")
                         n_limit = ui.number(
-                            label="limit", value=100, min=1, max=1000, step=1
+                            label="Result page limit",
+                            value=1000000,
+                            min=1,
+                            max=1000000,
+                            step=1,
                         )
                         ui.button(
                             "Submit task",

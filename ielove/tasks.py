@@ -64,8 +64,22 @@ def scrape_result_page(url: str) -> None:
 
 
 @app.task
-def scrape_region(region: str, property_type: str, limit: int = 100) -> None:
-    base = f"https://www.ielove.co.jp/{property_type}/{region}/result"
+def scrape_region(
+    region: str, property_type: str, limit: int = 1000000
+) -> None:
+    url = f"https://www.ielove.co.jp/{property_type}/{region}/result/"
+    try:
+        last_page_idx = ielove.last_result_page_idx(url)
+    except Exception as e:
+        logging.warning(
+            "Could not determine last result page index for property type "
+            "'{}' in region '{}': {} {}",
+            property_type,
+            region,
+            type(e),
+            str(e),
+        )
+        last_page_idx = limit
+    limit = min(last_page_idx, limit)
     for i in range(1, limit + 1):
-        url = f"{base}/?pg={i}"
-        scrape_result_page.delay(url)
+        scrape_result_page.delay(f"{url}?pg={i}")

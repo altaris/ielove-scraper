@@ -4,6 +4,7 @@ from base64 import b64encode
 from datetime import datetime
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
+import bs4
 
 import regex as re
 import requests
@@ -74,6 +75,49 @@ ALL_PROPERTY_TYPES = [
     "mansion_shinchiku",
     "tochi",
 ]
+
+
+def last_result_page_idx(url: str) -> int:
+    """
+    Given a result page url, e.g.
+
+        https://www.ielove.co.jp/mansion_chuko/tokyo/result/?pg=2
+
+    returns the index of the last page in the bottom pager, i.e. the last N
+    such that
+
+        https://www.ielove.co.jp/mansion_chuko/tokyo/result/?pg=N
+
+    is a valid result page.
+
+    Warning:
+        Put this method in a `try`/`catch` block 'cause it's gun' throw hard if
+        anything happens
+    """
+    soup = get_soup(url)
+    tag = soup.find(name="form", id="pagerParams")
+    data = "&".join(
+        [t["name"] + "=" + t["value"] for t in tag.find_all(name="input")]
+    )
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
+    }
+    url = "https://www.ielove.co.jp/bkn/ajax/count/"
+    logging.debug("POST {}", url)
+    response = requests.post(url, headers=headers, data=data, timeout=20)
+    response.raise_for_status()
+    html = response.json()["pcPager"]
+    soup = bs4.BeautifulSoup(html, "html.parser")
+    cnts = all_tag_contents(soup)
+    cnts = [c for c in cnts if isinstance(c, int)]
+    return sorted(cnts)[-1]
+
+    # for tag in pager_soup.find_all(name="a"):
+    # if not tag.contents:
+    #     continue
+    # x = tag.contents[0]
+    # if m := re.match(r"^\d+$", x):
+    #     print(int(x))
 
 
 # pylint: disable=too-many-locals
