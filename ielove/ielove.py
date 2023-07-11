@@ -2,7 +2,7 @@
 
 from base64 import b64encode
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from urllib.parse import urlparse
 
 import bs4
@@ -10,12 +10,10 @@ import regex as re
 import requests
 from loguru import logger as logging
 
-from ielove.db import get_collection
 from ielove.utils import (
     all_tag_contents,
     get_soup,
     process_string,
-    url_or_pid_to_pid,
 )
 
 ALL_REGIONS = [
@@ -219,19 +217,3 @@ def scrape_result_page(url: str) -> Dict[str, Any]:
         )
     data = {"datetime": datetime.now(), "pages": pages}
     return data
-
-
-def seconds_since_last_scrape(key: str) -> int:
-    """
-    Returns the time (in seconds) since last time the property page was
-    scraped. Returns -1 if the page was never scraped
-    """
-    key = url_or_pid_to_pid(key)
-    collection = get_collection("properties")
-    result: Optional[dict] = collection.find_one(
-        {"pid": key},
-        projection=["datetime"],
-    )
-    if result is None:
-        return -1
-    return (datetime.now() - result["datetime"]).seconds

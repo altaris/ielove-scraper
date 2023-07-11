@@ -1,22 +1,38 @@
 # pylint: disable=missing-function-docstring
 """Celery tasks"""
 
-from urllib.parse import ParseResult
+from datetime import datetime, timedelta
+from typing import Optional
 
 from loguru import logger as logging
 
 from ielove import db, ielove
 from ielove.celery import app
+from ielove.utils import url_or_pid_to_pid
 
-ONE_MONTH = 60 * 60 * 24 * 7 * 30  # Thirty days in seconds
+
+def _next_scrape_datetime(data: dict) -> datetime:
+    """Returns the next datetime from which a property should be rescraped"""
+    if "次回更新予定日" not in data["details"]:
+        return datetime.now() + timedelta(days=30)
+    dt_next = data["details"]["次回更新予定日"] + timedelta(days=1)
+    if dt_next <= datetime.now():
+        # If in the past, set to next month
+        dt_next = datetime.now() + timedelta(days=30)
+    return dt_next
 
 
 def _should_scrape(url: str) -> bool:
-    """Returns False if the page has been scraped within a week"""
-    if isinstance(url, ParseResult):
-        url = url.geturl()
-    age = ielove.seconds_since_last_scrape(url)
-    return not 0 < age < ONE_MONTH
+    """
+    Returns `True` if the property has never been scraped, or if the current
+    datatime is after that provided by `_next_scrape_datetime`.
+    """
+    pid = url_or_pid_to_pid(url)
+    collection = db.get_collection("properties")
+    data: Optional[dict] = collection.find_one({"pid": pid})
+    if data is None:
+        return True
+    return datetime.now() >= _next_scrape_datetime(data)
 
 
 @app.task(rate_limit="20/m")
@@ -29,6 +45,11 @@ def scrape_property_page(url: str) -> None:
     data = ielove.scrape_property_page(url)
     collection = db.get_collection("properties")
     collection.find_one_and_replace({"pid": data["pid"]}, data, upsert=True)
+    eta = _next_scrape_datetime(data)
+    scrape_property_page.apply_async((url,), eta=eta)
+    logging.debug(
+        "Scheduling rescraping of property {} to {}", data["pid"], eta
+    )
 
 
 @app.task(rate_limit="20/m")
