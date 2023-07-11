@@ -4,8 +4,8 @@ from base64 import b64encode
 from datetime import datetime
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
-import bs4
 
+import bs4
 import regex as re
 import requests
 from loguru import logger as logging
@@ -187,7 +187,7 @@ def scrape_property_page(url: str) -> Dict[str, Any]:
                 "url": tag["src"],
                 "img": b64encode(response.content),
             }
-        except (requests.HTTPError, requests.Timeout) as e:
+        except requests.exceptions.RequestException as e:
             logging.error(
                 f"Could not get floor plan for property id {data['pid']} "
                 f"({data['url']}): {type(e)} {str(e)}"
