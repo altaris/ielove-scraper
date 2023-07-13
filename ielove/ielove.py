@@ -3,7 +3,7 @@
 from base64 import b64encode
 from datetime import datetime
 from typing import Any, Dict
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import bs4
 import regex as re
@@ -201,19 +201,42 @@ def scrape_result_page(url: str) -> Dict[str, Any]:
 
         https://www.ielove.co.jp/chintai/tokyo/result/
         https://www.ielove.co.jp/mansion_chuko/tokyo/result/?pg=2
-
-    If `soup` is provided, no additional GET against `ielove.co.jp` is issued.
     """
     logging.info("Scraping property result page '{}'", url)
-    soup, r, pages = get_soup(url), re.compile("^/(.+)/(.+)/$"), []
+    soup = get_soup(url)
+    data = {
+        "datetime": datetime.now(),
+        "properties": [],
+        **result_page_metadata(url)
+    }
     for tag in soup.find_all(name="a", class_="result-panel-room__inner"):
-        m = r.search(tag["href"])
-        pages.append(
+        pid, pt = tag["href"].split("/")
+        data["properties"].append(
             {
-                "pid": m.group(2),
-                "type": m.group(1),
+                "pid": pid,
+                "type": pt,
                 "url": "https://www.ielove.co.jp" + tag["href"],
             }
         )
-    data = {"datetime": datetime.now(), "pages": pages}
     return data
+
+def result_page_metadata(url: str) -> dict:
+    """
+    Returns a few metadata that can be obtained just from the result page url:
+    - the cleaned URL
+    - the property type
+    - the region
+    - the result page index
+
+    These values are under keys `url`, `type`, `region`, and `idx`, respectively
+    """
+    u = urlparse(url)
+    path_parts, query = u.path.split("/"), parse_qs(u.query)
+    return {
+        "url": u.geturl(),
+        "type": path_parts[0],
+        "region": path_parts[1],
+        "idx": (
+            query["pg"][0] if "pg" in query and len(query["pg"]) > 0 else 1
+        ),
+    }
