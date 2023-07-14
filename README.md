@@ -1,5 +1,4 @@
-ielove
-==========
+# ielove
 
 ![Python 3](https://img.shields.io/badge/python-3-blue?logo=python)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://choosealicense.com/licenses/mit/)
@@ -23,7 +22,9 @@ celery -A ielove.tasks worker --loglevel=INFO
 ```sh
 python3 -m ielove get-property https://www.ielove.co.jp/chintai/c1-397758400
 ```
+
 If commiting to database:
+
 ```sh
 . ./secret.env
 export MONGO_USER=$MONGO_INITDB_ROOT_USERNAME
@@ -41,12 +42,13 @@ python3 -m ielove.webui
 
 ## Dependencies
 
-* `python3.10` or newer;
-* `requirements.txt` for runtime dependencies;
-* `requirements.dev.txt` for development dependencies.
-* `make` (optional);
+- `python3.10` or newer;
+- `requirements.txt` for runtime dependencies;
+- `requirements.dev.txt` for development dependencies.
+- `make` (optional);
 
 Simply run
+
 ```sh
 virtualenv venv -p python3.10
 . ./venv/bin/activate
@@ -58,11 +60,14 @@ pip install -r requirements.dev.txt
 ## Documentation
 
 Simply run
+
 ```sh
 make docs
 ```
+
 This will generate the HTML doc of the project, and the index file should be at
 `docs/index.html`. To have it directly in your browser, run
+
 ```sh
 make docs-browser
 ```
@@ -70,9 +75,11 @@ make docs-browser
 ## Code quality
 
 Don't forget to run
+
 ```sh
 make
 ```
+
 to format the code following [black](https://pypi.org/project/black/),
 typecheck it using [mypy](http://mypy-lang.org/), and check it against coding
 standards using [pylint](https://pylint.org/).

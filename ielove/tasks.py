@@ -35,9 +35,8 @@ def _should_scrape_property_page(url: str) -> bool:
     pid = url_or_pid_to_pid(url)
     collection = db.get_collection("properties")
     data: Optional[dict] = collection.find_one({"pid": pid})
-    return (
-        data is None
-        or (datetime.now() >= _next_property_page_scrape_datetime(data))
+    return data is None or (
+        datetime.now() >= _next_property_page_scrape_datetime(data)
     )
 
 
@@ -50,9 +49,8 @@ def _should_scrape_result_page(url: str) -> bool:
     del meta["url"]
     collection = db.get_collection("results")
     data: Optional[dict] = collection.find_one(meta)
-    return (
-        data is None
-        or (datetime.now() >= _next_property_page_scrape_datetime(data))
+    return data is None or (
+        datetime.now() >= _next_property_page_scrape_datetime(data)
     )
 
 
@@ -97,8 +95,7 @@ def scrape_result_page(url: str) -> None:
     data = ielove.scrape_result_page(url)
     collection = db.get_collection("results")
     collection.find_one_and_replace(
-        {k: data[k] for k in ["type", "region", "idx"]},
-        data, upsert=True
+        {k: data[k] for k in ["type", "region", "idx"]}, data, upsert=True
     )
     for page in data["properties"]:
         url = page["url"]
@@ -106,9 +103,7 @@ def scrape_result_page(url: str) -> None:
             scrape_property_page.delay(url)
     eta = _next_result_page_scrape_datetime(data)
     scrape_result_page.apply_async((url,), eta=eta)
-    logging.debug(
-        "Scheduling rescraping of result page '{}' to {}", url, eta
-    )
+    logging.debug("Scheduling rescraping of result page '{}' to {}", url, eta)
 
 
 @app.task(rate_limit="20/m")

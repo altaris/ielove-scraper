@@ -21,7 +21,7 @@ def get_app() -> Celery:
     port = os.environ.get("REDIS_PORT", "6379")
     k = os.environ.get("REDIS_DB", "0")
     uri = f"redis://{host}:{port}/{k}"
-    return Celery("ielove.tasks", broker=uri, backend="rpc://")
+    return Celery("ielove.tasks", broker=uri)
 
 
 app = get_app()
