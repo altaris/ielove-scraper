@@ -103,7 +103,9 @@ def scrape_result_page(url: str) -> None:
             scrape_property_page.delay(url)
     eta = _next_result_page_scrape_datetime(data)
     scrape_result_page.apply_async((url,), eta=eta)
-    logging.debug("Scheduling rescraping of result page '{}' to {}", url, eta)
+    logging.debug(
+        "Scheduling rescraping of result page '{}' to {}", data["url"], eta
+    )
 
 
 @app.task(rate_limit="20/m")
@@ -131,6 +133,6 @@ def scrape_region(
         last_page_idx = limit
     limit = min(last_page_idx, limit)
     for i in range(1, limit + 1):
-        url = f"{url}?pg={i}"
-        if _should_scrape_result_page(url):
-            scrape_result_page.delay(url)
+        a = f"{url}?pg={i}"
+        if _should_scrape_result_page(a):
+            scrape_result_page.delay(a)

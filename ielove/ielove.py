@@ -110,13 +110,6 @@ def last_result_page_idx(url: str) -> int:
     cnts = [c for c in cnts if isinstance(c, int)]
     return sorted(cnts)[-1]
 
-    # for tag in pager_soup.find_all(name="a"):
-    # if not tag.contents:
-    #     continue
-    # x = tag.contents[0]
-    # if m := re.match(r"^\d+$", x):
-    #     print(int(x))
-
 
 # pylint: disable=too-many-locals
 def scrape_property_page(url: str) -> Dict[str, Any]:
@@ -207,18 +200,19 @@ def scrape_result_page(url: str) -> Dict[str, Any]:
     data = {
         "datetime": datetime.now(),
         "properties": [],
-        **result_page_metadata(url)
+        **result_page_metadata(url),
     }
     for tag in soup.find_all(name="a", class_="result-panel-room__inner"):
-        pid, pt = tag["href"].split("/")
+        path_parts = tag["href"].split("/")
         data["properties"].append(
             {
-                "pid": pid,
-                "type": pt,
+                "pid": path_parts[2],
+                "type": path_parts[1],
                 "url": "https://www.ielove.co.jp" + tag["href"],
             }
         )
     return data
+
 
 def result_page_metadata(url: str) -> dict:
     """
@@ -234,8 +228,8 @@ def result_page_metadata(url: str) -> dict:
     path_parts, query = u.path.split("/"), parse_qs(u.query)
     return {
         "url": u.geturl(),
-        "type": path_parts[0],
-        "region": path_parts[1],
+        "type": path_parts[1],
+        "region": path_parts[2],
         "idx": (
             query["pg"][0] if "pg" in query and len(query["pg"]) > 0 else 1
         ),
