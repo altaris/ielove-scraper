@@ -60,11 +60,12 @@ def populate_with_property(data: dict) -> None:
             ]
             props = "hide-header; wrap-cells"
             ui.table(columns=columns, rows=rows).props(props)
-        with splitter.after:
-            ui.image(
-                "data:image/png;base64,"
-                + str(data["floor_plan"]["img"].decode("utf-8"))
-            )
+        if "floor_plan" in data and "img" in data["floor_plan"]:
+            with splitter.after:
+                ui.image(
+                    "data:image/png;base64,"
+                    + str(data["floor_plan"]["img"].decode("utf-8"))
+                )
 
 
 def s_search_by_address():
@@ -192,8 +193,8 @@ with ui.tab_panels(tabs, value=tab_search).classes("w-full"):
                             ielove.ALL_PROPERTY_TYPES, label="Property type"
                         ).classes("w-1/4")
                         n_limit = ui.number(
-                            label="Result page limit",
-                            value=1000000,
+                            label="Default page limit",
+                            value=100,
                             min=1,
                             max=1000000,
                             step=1,

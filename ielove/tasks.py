@@ -50,7 +50,7 @@ def _should_scrape_result_page(url: str) -> bool:
     collection = db.get_collection("results")
     data: Optional[dict] = collection.find_one(meta)
     return data is None or (
-        datetime.now() >= _next_property_page_scrape_datetime(data)
+        datetime.now() >= _next_result_page_scrape_datetime(data)
     )
 
 
@@ -69,11 +69,11 @@ def scrape_property_page(url: str) -> None:
     data = ielove.scrape_property_page(url)
     collection = db.get_collection("properties")
     collection.find_one_and_replace({"pid": data["pid"]}, data, upsert=True)
-    eta = _next_property_page_scrape_datetime(data)
-    scrape_property_page.apply_async((url,), eta=eta)
-    logging.debug(
-        "Scheduling rescraping of property {} to {}", data["pid"], eta
-    )
+    # eta = _next_property_page_scrape_datetime(data)
+    # scrape_property_page.apply_async((url,), eta=eta)
+    # logging.debug(
+    #     "Scheduling rescraping of property {} to {}", data["pid"], eta
+    # )
 
 
 @app.task(rate_limit="20/m")
@@ -101,17 +101,15 @@ def scrape_result_page(url: str) -> None:
         url = page["url"]
         if _should_scrape_property_page(url):
             scrape_property_page.delay(url)
-    eta = _next_result_page_scrape_datetime(data)
-    scrape_result_page.apply_async((url,), eta=eta)
-    logging.debug(
-        "Scheduling rescraping of result page '{}' to {}", data["url"], eta
-    )
+    # eta = _next_result_page_scrape_datetime(data)
+    # scrape_result_page.apply_async((url,), eta=eta)
+    # logging.debug(
+    #     "Scheduling rescraping of result page '{}' to {}", data["url"], eta
+    # )
 
 
 @app.task(rate_limit="20/m")
-def scrape_region(
-    region: str, property_type: str, limit: int = 1000000
-) -> None:
+def scrape_region(region: str, property_type: str, limit: int = 100) -> None:
     """
     Scrapes all properties of a given type in a given region. Result pages for
     this type/region tuple are enumerated, and those for which
@@ -120,7 +118,13 @@ def scrape_region(
     """
     url = f"https://www.ielove.co.jp/{property_type}/{region}/result/"
     try:
-        last_page_idx = ielove.last_result_page_idx(url)
+        limit = ielove.last_result_page_idx(url)
+        logging.info(
+            "Results for property type '{}' in region '{}': found {} pages",
+            property_type,
+            region,
+            limit,
+        )
     except Exception as e:
         logging.warning(
             "Could not determine last result page index for property type "
@@ -130,8 +134,6 @@ def scrape_region(
             type(e),
             str(e),
         )
-        last_page_idx = limit
-    limit = min(last_page_idx, limit)
     for i in range(1, limit + 1):
         a = f"{url}?pg={i}"
         if _should_scrape_result_page(a):
