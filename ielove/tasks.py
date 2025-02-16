@@ -66,9 +66,18 @@ def scrape_property_page(url: str) -> None:
             "Property page '{}' has been scraped too recently, skipping", url
         )
         return
-    data = ielove.scrape_property_page(url)
-    collection = db.get_collection("properties")
-    collection.find_one_and_replace({"pid": data["pid"]}, data, upsert=True)
+    try:
+        data = ielove.scrape_property_page(url)
+        collection = db.get_collection("properties")
+        collection.find_one_and_replace(
+            {"pid": data["pid"]}, data, upsert=True
+        )
+    except Exception as e:
+        logging.error(
+            "Could not scrape and commit property page '{url}': {} {}",
+            type(e),
+            str(e),
+        )
     # eta = _next_property_page_scrape_datetime(data)
     # scrape_property_page.apply_async((url,), eta=eta)
     # logging.debug(
@@ -101,6 +110,8 @@ def scrape_result_page(url: str) -> None:
         url = page["url"]
         if _should_scrape_property_page(url):
             scrape_property_page.delay(url)
+        else:
+            logging.debug("Skipped scraping of property page '{}'", url)
     # eta = _next_result_page_scrape_datetime(data)
     # scrape_result_page.apply_async((url,), eta=eta)
     # logging.debug(
@@ -138,3 +149,5 @@ def scrape_region(region: str, property_type: str, limit: int = 100) -> None:
         a = f"{url}?pg={i}"
         if _should_scrape_result_page(a):
             scrape_result_page.delay(a)
+        else:
+            logging.debug("Skipped scraping of result page '{}'", a)
